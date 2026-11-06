@@ -65,6 +65,30 @@ for (const [business, day] of SCENARIOS) {
   });
 }
 
+// Answer key worked out by hand from data/betterspace-b2b/day*/Sales.csv: the Service rows
+// dated in August that are not Cancelled (5 rows, RM 3,400). B2C sells no services.
+test('service order value: B2B August is RM 3,400 from 5 orders, B2C has none', () => {
+  for (const [business, day, value, count] of [['b2b', 'day1', 340000, 5], ['b2b', 'day2', 340000, 5], ['b2c', 'day1', 0, 0], ['b2c', 'day2', 0, 0]]) {
+    const s = loadScenario(`betterspace-${business}`, day);
+    const m = computeMetrics(s.records, s.reportingDate, { historyStart: s.historyStart });
+    assert.equal(m.service_order_value, value, `${business} ${day} value`);
+    assert.equal(m.service_order_count, count, `${business} ${day} count`);
+    assert.ok(m.service_order_value <= m.period_order_value, 'part of the period order value');
+  }
+});
+
+test('service order value follows the period and the filters', () => {
+  const s = loadScenario('betterspace-b2b', 'day1');
+  const all = computeMetrics(s.records, s.reportingDate, { historyStart: s.historyStart });
+  const july = computeMetrics(s.records, s.reportingDate, { periodStart: '2026-07-01', periodEnd: '2026-07-31' });
+  const byHand = s.records.sales.filter(x => x.offering_type === 'service' && x.status !== 'excluded' && x.date >= '2026-07-01' && x.date <= '2026-07-31').reduce((a, x) => a + x.amount, 0);
+  assert.equal(july.service_order_value, byHand);
+  assert.ok(s.records.sales.every(x => x.channel), 'every practice sale has a channel');
+  const channels = [...new Set(s.records.sales.map(x => x.channel))];
+  const summed = channels.reduce((a, channel) => a + computeMetrics(s.records, s.reportingDate, { filters: { channel } }).service_order_value, 0);
+  assert.equal(summed, all.service_order_value, 'the channels add up to the whole');
+});
+
 test('no code path reads the computer clock for a business date', () => {
   const RealDate = Date;
   class FrozenDate extends RealDate { constructor(...a) { super(...(a.length ? a : ['2031-02-03T04:05:06Z'])); } static now() { return new RealDate('2031-02-03T04:05:06Z').getTime(); } }

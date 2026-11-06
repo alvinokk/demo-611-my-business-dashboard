@@ -14,6 +14,10 @@ export function renderOverview() {
     ? tr('vs {0}–{1}: unavailable (no prior sales)', formatDate(cmp.start), formatDate(cmp.end))
     : tr('{0}{1}% vs {2}–{3} ({4})', cmp.growth >= 0 ? '+' : '', (cmp.growth * 100).toFixed(1), formatDate(cmp.start), formatDate(cmp.end), money(cmp.prior_order_value));
   add(tiles, tile({ label: tr('Order value in period'), value: money(m.period_order_value), hero: true, delta: { text: deltaText, dir: cmp.growth === null ? '' : cmp.growth >= 0 ? 'up' : 'down' }, foot: tr('{0} orders{1} · booked value, not profit', m.period_order_count, m.average_order_value !== null ? tr(' · average {0}', money(m.average_order_value)) : '') }));
+  if ((records().sales || []).some(s => s.offering_type === 'service')) {
+    const share = m.period_order_value > 0 ? (m.service_order_value / m.period_order_value * 100).toFixed(1) : null;
+    add(tiles, tile({ label: tr('Service order value in period'), value: money(m.service_order_value), foot: share === null ? tr('{0} service order(s)', m.service_order_count) : tr('{0} service order(s) · {1}% of order value', m.service_order_count, share) }));
+  }
   if (!absent('Payments')) {
     add(tiles, tile({ label: tr('Cash collected in period'), value: money(m.period_cash_collected), foot: tr('{0} receipts by payment date', m.period_receipt_count) }));
     add(tiles, tile({ label: tr('Outstanding balance'), value: money(m.outstanding_balance), foot: tr('as of {0}', formatDate(rd)) }));
